@@ -2,6 +2,7 @@
 
 Texture2D g_Tex : register(t0);
 SamplerState g_SamLinear : register(s0);
+Texture2D g_TexAlpha : register(t1);
 
 
 cbuffer VSConstantBuffer : register(b0)
@@ -10,6 +11,7 @@ cbuffer VSConstantBuffer : register(b0)
     matrix g_View;  
     matrix g_Proj;  
     matrix g_WorldInvTranspose;
+    matrix g_textRotation;
 }
 
 cbuffer PSConstantBuffer : register(b1)

@@ -14,6 +14,7 @@ public:
         DirectX::XMMATRIX view;
         DirectX::XMMATRIX proj;
         DirectX::XMMATRIX worldInvTranspose;
+        DirectX::XMMATRIX textRotation;
     };
 
     struct PSConstantBuffer
@@ -29,7 +30,7 @@ public:
         DirectX::XMFLOAT4 eyePos;
     };
 
-    enum class ShowMode { WoodCrate, FireAnim };
+    enum class ShowMode { WoodCrate, FireAnim, FireAnim2};
 
 public:
     GameApp(HINSTANCE hInstance, const std::wstring& windowName, int initWidth, int initHeight);
@@ -60,6 +61,8 @@ private:
     ShowMode m_CurrMode;										// 当前显示的模式
 
     ComPtr<ID3D11ShaderResourceView> m_pWoodCrate;			    // 木盒纹理
+    ComPtr<ID3D11ShaderResourceView> m_pFireCrate;			    
+    ComPtr<ID3D11ShaderResourceView> m_pFireAlphaCrate;			   
     std::vector<ComPtr<ID3D11ShaderResourceView>> m_pFireAnims; // 火焰纹理集
     ComPtr<ID3D11SamplerState> m_pSamplerState;				    // 采样器状态
 

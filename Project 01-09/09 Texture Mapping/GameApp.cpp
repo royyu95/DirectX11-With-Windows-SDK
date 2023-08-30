@@ -45,7 +45,8 @@ void GameApp::UpdateScene(float dt)
         static int curr_mode_item = static_cast<int>(m_CurrMode);
         const char* mode_strs[] = {
             "Box",
-            "Fire Anim"
+            "Fire Anim",
+            "Fire Anim2"
         };
         if (ImGui::Combo("Mode", &curr_mode_item, mode_strs, ARRAYSIZE(mode_strs)))
         {
@@ -60,7 +61,7 @@ void GameApp::UpdateScene(float dt)
                 m_pd3dImmediateContext->PSSetShader(m_pPixelShader3D.Get(), nullptr, 0);
                 m_pd3dImmediateContext->PSSetShaderResources(0, 1, m_pWoodCrate.GetAddressOf());
             }
-            else
+            else if (curr_mode_item == 1)
             {
                 m_CurrMode = ShowMode::FireAnim;
                 m_CurrFrame = 0;
@@ -70,6 +71,17 @@ void GameApp::UpdateScene(float dt)
                 m_pd3dImmediateContext->VSSetShader(m_pVertexShader2D.Get(), nullptr, 0);
                 m_pd3dImmediateContext->PSSetShader(m_pPixelShader2D.Get(), nullptr, 0);
                 m_pd3dImmediateContext->PSSetShaderResources(0, 1, m_pFireAnims[0].GetAddressOf());
+            }
+            else
+            {
+                m_CurrMode = ShowMode::FireAnim2;
+                m_pd3dImmediateContext->IASetInputLayout(m_pVertexLayout3D.Get());
+                auto meshData = Geometry::CreateBox();
+                ResetMesh(meshData);
+                m_pd3dImmediateContext->VSSetShader(m_pVertexShader3D.Get(), nullptr, 0);
+                m_pd3dImmediateContext->PSSetShader(m_pPixelShader3D.Get(), nullptr, 0);
+                m_pd3dImmediateContext->PSSetShaderResources(0, 1, m_pFireCrate.GetAddressOf());
+                m_pd3dImmediateContext->PSSetShaderResources(1, 1, m_pFireAlphaCrate.GetAddressOf());
             }
         }
     }
@@ -103,6 +115,23 @@ void GameApp::UpdateScene(float dt)
             m_pd3dImmediateContext->PSSetShaderResources(0, 1, m_pFireAnims[m_CurrFrame].GetAddressOf());
         }		
     }
+    else if (m_CurrMode == ShowMode::FireAnim2)
+    {
+        static float phi = 0.0f, theta = 0.0f;
+        phi += 0.0001f, theta += 0.00015f;
+        static float phit = 0.0f;
+        phit += 0.01f;
+        XMMATRIX W = XMMatrixRotationX(phi) * XMMatrixRotationY(theta);
+        m_VSConstantBuffer.world = XMMatrixTranspose(W);
+        m_VSConstantBuffer.worldInvTranspose = XMMatrixTranspose(InverseTranspose(W));
+        m_VSConstantBuffer.textRotation = XMMatrixTranspose(XMMatrixTranslation(-0.5f, -0.5f, 0.0f) * XMMatrixRotationZ(phit) * XMMatrixTranslation(0.5f, 0.5f, 0.0f));
+
+        // 更新常量缓冲区，让立方体转起来
+        D3D11_MAPPED_SUBRESOURCE mappedData;
+        HR(m_pd3dImmediateContext->Map(m_pConstantBuffers[0].Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData));
+        memcpy_s(mappedData.pData, sizeof(VSConstantBuffer), &m_VSConstantBuffer, sizeof(VSConstantBuffer));
+        m_pd3dImmediateContext->Unmap(m_pConstantBuffers[0].Get(), 0);
+    }
 }
 
 void GameApp::DrawScene()
@@ -110,7 +139,7 @@ void GameApp::DrawScene()
     assert(m_pd3dImmediateContext);
     assert(m_pSwapChain);
 
-    m_pd3dImmediateContext->ClearRenderTargetView(m_pRenderTargetView.Get(), reinterpret_cast<const float*>(&Colors::Black));
+    m_pd3dImmediateContext->ClearRenderTargetView(m_pRenderTargetView.Get(), reinterpret_cast<const float*>(&Colors::DarkGray));
     m_pd3dImmediateContext->ClearDepthStencilView(m_pDepthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
     
     // 绘制几何模型
@@ -177,6 +206,8 @@ bool GameApp::InitResource()
 
     // 初始化木箱纹理
     HR(CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"..\\Texture\\WoodCrate.dds", nullptr, m_pWoodCrate.GetAddressOf()));
+    HR(CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"..\\Texture\\flare.dds", nullptr, m_pFireCrate.GetAddressOf()));
+    HR(CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"..\\Texture\\flarealpha.dds", nullptr, m_pFireAlphaCrate.GetAddressOf()));
     // 初始化火焰纹理
     WCHAR strFile[40];
     m_pFireAnims.resize(120);
@@ -190,9 +221,9 @@ bool GameApp::InitResource()
     D3D11_SAMPLER_DESC sampDesc;
     ZeroMemory(&sampDesc, sizeof(sampDesc));
     sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-    sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-    sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-    sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+    sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
     sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
     sampDesc.MinLOD = 0;
     sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
@@ -212,7 +243,8 @@ bool GameApp::InitResource()
     ));
     m_VSConstantBuffer.proj = XMMatrixTranspose(XMMatrixPerspectiveFovLH(XM_PIDIV2, AspectRatio(), 1.0f, 1000.0f));
     m_VSConstantBuffer.worldInvTranspose = XMMatrixIdentity();
-    
+    m_VSConstantBuffer.textRotation = XMMatrixIdentity();
+
     // 初始化用于PS的常量缓冲区的值
     // 这里只使用一盏点光来演示
     m_PSConstantBuffer.pointLight[0].position = XMFLOAT3(0.0f, 0.0f, -10.0f);
@@ -252,6 +284,7 @@ bool GameApp::InitResource()
     m_pd3dImmediateContext->PSSetSamplers(0, 1, m_pSamplerState.GetAddressOf());
     m_pd3dImmediateContext->PSSetShaderResources(0, 1, m_pWoodCrate.GetAddressOf());
     m_pd3dImmediateContext->PSSetShader(m_pPixelShader3D.Get(), nullptr, 0);
+    m_pd3dImmediateContext->PSSetShaderResources(1, 1, m_pFireAlphaCrate.GetAddressOf());
     
     // ******************
     // 设置调试对象名
