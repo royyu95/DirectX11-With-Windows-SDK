@@ -145,11 +145,26 @@ void GameApp::DrawScene()
     m_pd3dImmediateContext->ClearRenderTargetView(m_pRenderTargetView.Get(), reinterpret_cast<const float*>(&Colors::Black));
     m_pd3dImmediateContext->ClearDepthStencilView(m_pDepthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
     
-    // 绘制几何模型
-    m_pd3dImmediateContext->DrawIndexed(m_IndexCount, 0, 0);
+ //思路就是 分两次draw，第一次为线框模式，第二次绘制实体，而且线框和实体不能使用一个颜色
+ //1. 在UpdateScene() 中添加
+ // 设置 光栅化状态 以及颜色值
+ m_pd3dImmediateContext->RSSetState(m_pRSWireframe.Get());
+ m_PSConstantBuffer.material.diffuse = XMFLOAT4(0.0f, 0.0f, 0.0f,0.0f);
+ //2. DrawScene 添加如下代码
+ // 第一次绘制
+ m_pd3dImmediateContext->DrawIndexed(m_IndexCount, 0, 0);
 
+ // 第二次绘制
+ m_pd3dImmediateContext->RSSetState(nullptr);
+ // 颜色更改为白色
+ m_PSConstantBuffer.material.diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.0f);
+ D3D11_MAPPED_SUBRESOURCE mappedData;
+ HR(m_pd3dImmediateContext->Map(m_pConstantBuffers[1].Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData));
+ memcpy_s(mappedData.pData, sizeof(PSConstantBuffer), &m_PSConstantBuffer, sizeof(PSConstantBuffer));
+ m_pd3dImmediateContext->Unmap(m_pConstantBuffers[1].Get(), 0);
+ // 绘制几何模型
+ m_pd3dImmediateContext->DrawIndexed(m_IndexCount, 0, 0);
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
-
     HR(m_pSwapChain->Present(0, 0));
 }
 
@@ -235,7 +250,8 @@ bool GameApp::InitResource()
     // 使用默认平行光
     m_PSConstantBuffer.dirLight = m_DirLight;
     // 注意不要忘记设置此处的观察位置，否则高亮部分会有问题
-    m_PSConstantBuffer.eyePos = XMFLOAT4(0.0f, 0.0f, -5.0f, 0.0f);
+    m_PSConstantBuffer.eyePos = XMFLOAT3(0.0f, 0.0f, -5.0f);
+    m_PSConstantBuffer.showWire = false;
 
     // 更新PS常量缓冲区资源
     D3D11_MAPPED_SUBRESOURCE mappedData;
@@ -249,7 +265,7 @@ bool GameApp::InitResource()
     D3D11_RASTERIZER_DESC rasterizerDesc;
     ZeroMemory(&rasterizerDesc, sizeof(rasterizerDesc));
     rasterizerDesc.FillMode = D3D11_FILL_WIREFRAME;
-    rasterizerDesc.CullMode = D3D11_CULL_NONE;
+    rasterizerDesc.CullMode = D3D11_CULL_BACK;
     rasterizerDesc.FrontCounterClockwise = false;
     rasterizerDesc.DepthClipEnable = true;
     HR(m_pd3dDevice->CreateRasterizerState(&rasterizerDesc, m_pRSWireframe.GetAddressOf()));

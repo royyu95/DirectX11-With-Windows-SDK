@@ -15,7 +15,7 @@ cbuffer PSConstantBuffer : register(b1)
     SpotLight g_SpotLight;
     Material g_Material;
     float3 g_EyePosW;
-    float g_Pad;
+    bool g_showWire;
 }
 
 

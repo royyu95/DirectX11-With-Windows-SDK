@@ -6,7 +6,7 @@ SamplerState g_SamLinear : register(s0);
 
 cbuffer VSConstantBuffer : register(b0)
 {
-    matrix g_World; 
+    matrix <float, 4, 4> g_World; 
     matrix g_View;  
     matrix g_Proj;  
     matrix g_WorldInvTranspose;

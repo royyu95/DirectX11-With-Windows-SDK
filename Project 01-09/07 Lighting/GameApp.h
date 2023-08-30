@@ -24,7 +24,8 @@ public:
         PointLight pointLight;
         SpotLight spotLight;
         Material material;
-        DirectX::XMFLOAT4 eyePos;
+        DirectX::XMFLOAT3 eyePos;
+        bool showWire;
     };
 
 

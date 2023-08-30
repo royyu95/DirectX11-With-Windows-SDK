@@ -47,6 +47,7 @@ void GameApp::UpdateScene(float dt)
     HR(m_pd3dImmediateContext->Map(m_pConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData));
     memcpy_s(mappedData.pData, sizeof(m_CBuffer), &m_CBuffer, sizeof(m_CBuffer));
     m_pd3dImmediateContext->Unmap(m_pConstantBuffer.Get(), 0);
+    Test({1,2,3});
 }
 
 void GameApp::DrawScene()
@@ -194,6 +195,7 @@ bool GameApp::InitResource()
     m_pd3dImmediateContext->VSSetShader(m_pVertexShader.Get(), nullptr, 0);
     // 将更新好的常量缓冲区绑定到顶点着色器
     m_pd3dImmediateContext->VSSetConstantBuffers(0, 1, m_pConstantBuffer.GetAddressOf());
+    m_pd3dImmediateContext->PSSetConstantBuffers(0, 1, m_pConstantBuffer.GetAddressOf());
 
     m_pd3dImmediateContext->PSSetShader(m_pPixelShader.Get(), nullptr, 0);
 
@@ -209,3 +211,7 @@ bool GameApp::InitResource()
 
     return true;
 }
+
+
+void GameApp::Test(DirectX::FXMVECTOR t)
+{}
